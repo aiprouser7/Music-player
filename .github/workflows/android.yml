@@ -24,6 +24,7 @@ jobs:
             -w /home/user/app \
             kivy/buildozer \
             -c 'set -euo pipefail;
+            apt-get update; apt-get install -y curl unzip;
             export ANDROID_SDK_ROOT=/home/user/app/.buildozer/android/platform/android-sdk;
             export ANDROID_HOME="$ANDROID_SDK_ROOT";
             export ANDROIDSDK="$ANDROID_SDK_ROOT";
