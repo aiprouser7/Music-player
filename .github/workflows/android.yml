@@ -23,7 +23,7 @@ jobs:
             -v "${{ github.workspace }}:/home/user/app" \
             -w /home/user/app \
             kivy/buildozer \
-            -c 'set -e;
+            -c 'set -euo pipefail;
             export ANDROID_SDK_ROOT=/home/user/app/.buildozer/android/platform/android-sdk;
             export ANDROID_HOME="$ANDROID_SDK_ROOT";
             export ANDROIDSDK="$ANDROID_SDK_ROOT";
@@ -31,12 +31,19 @@ jobs:
 
             SDKMANAGER=$(command -v sdkmanager || true);
             if [ -z "$SDKMANAGER" ]; then
-              SDKMANAGER=$(find /opt /usr /home -path "*/cmdline-tools/*/bin/sdkmanager" -type f 2>/dev/null | head -n 1);
+              SDKMANAGER=$(find "$ANDROID_SDK_ROOT" /opt /usr /home -path "*/cmdline-tools/*/bin/sdkmanager" -type f 2>/dev/null | head -n 1);
             fi;
 
             if [ -z "$SDKMANAGER" ]; then
-              echo "sdkmanager not found" >&2;
-              exit 1;
+              echo "Downloading Android cmdline-tools...";
+              TMP_TOOLS="$ANDROID_SDK_ROOT/cmdline-tools-tmp";
+              mkdir -p "$TMP_TOOLS";
+              curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$TMP_TOOLS/tools.zip";
+              unzip -q "$TMP_TOOLS/tools.zip" -d "$TMP_TOOLS";
+              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools";
+              mv "$TMP_TOOLS/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest";
+              rm -rf "$TMP_TOOLS";
+              SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager";
             fi;
 
             export PATH="$PATH:$(dirname "$SDKMANAGER")";
