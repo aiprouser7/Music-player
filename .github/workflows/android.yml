@@ -29,12 +29,16 @@ jobs:
             export ANDROIDSDK="$ANDROID_SDK_ROOT";
             mkdir -p "$ANDROID_SDK_ROOT";
 
-            TOOLS_ROOT=/opt/android/cmdline-tools;
-            if [ -d "$TOOLS_ROOT/latest/bin" ]; then
-              SDKMANAGER="$TOOLS_ROOT/latest/bin/sdkmanager";
-            else
-              SDKMANAGER="$TOOLS_ROOT/tools/bin/sdkmanager";
+            SDKMANAGER=$(command -v sdkmanager || true);
+            if [ -z "$SDKMANAGER" ]; then
+              SDKMANAGER=$(find /opt /usr /home -path "*/cmdline-tools/*/bin/sdkmanager" -type f 2>/dev/null | head -n 1);
             fi;
+
+            if [ -z "$SDKMANAGER" ]; then
+              echo "sdkmanager not found" >&2;
+              exit 1;
+            fi;
+
             export PATH="$PATH:$(dirname "$SDKMANAGER")";
 
             yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
