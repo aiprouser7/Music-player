@@ -19,7 +19,7 @@ A Kivy-based Android downloader that uses [`yt-dlp`](https://github.com/yt-dlp/y
    ```
 
 ## Android build (GitHub Actions)
-The workflow **Build Android APK** uses the official `kivy/buildozer` Docker image:
+The workflow **Build Android APK** runs natively on `ubuntu-latest` (no Docker image). It installs the Android SDK command-line tools, platform 33, build-tools 33.0.2 and 36.0.0 (for `aidl`), and NDK 26.2 before invoking Buildozer:
 1. Trigger the workflow manually from the Actions tab (`workflow_dispatch`).
 2. The pipeline runs `buildozer android release` and uploads the generated APK from `bin/` as an artifact named `tubeloader-apk`.
 

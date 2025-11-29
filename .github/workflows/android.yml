@@ -6,61 +6,72 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
+      ANDROID_HOME: ${{ github.workspace }}/.buildozer/android/platform/android-sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up cache
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore Buildozer cache
         uses: actions/cache@v4
         with:
           path: .buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      - name: Build release APK
+      - name: Install system dependencies
         run: |
-          docker run --rm \
-            --entrypoint /bin/bash \
-            -v "${{ github.workspace }}:/home/user/app" \
-            -w /home/user/app \
-            kivy/buildozer \
-            -c 'set -euo pipefail;
-            apt-get update; apt-get install -y curl unzip;
-            export ANDROID_SDK_ROOT=/home/user/app/.buildozer/android/platform/android-sdk;
-            export ANDROID_HOME="$ANDROID_SDK_ROOT";
-            export ANDROIDSDK="$ANDROID_SDK_ROOT";
-            mkdir -p "$ANDROID_SDK_ROOT";
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            zip unzip \
+            openjdk-17-jdk \
+            python3-pip python3-setuptools python3-venv \
+            libffi-dev libssl-dev libncurses5 libncursesw5-dev libreadline-dev zlib1g-dev
 
-            SDKMANAGER=$(command -v sdkmanager || true);
-            if [ -z "$SDKMANAGER" ]; then
-              SDKMANAGER=$(find "$ANDROID_SDK_ROOT" /opt /usr /home -path "*/cmdline-tools/*/bin/sdkmanager" -type f 2>/dev/null | head -n 1);
-            fi;
+      - name: Install Android SDK command-line tools
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_SDK_ROOT"
+          TOOLS_ZIP="$RUNNER_TEMP/cmdline-tools.zip"
+          curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$TOOLS_ZIP"
+          unzip -q "$TOOLS_ZIP" -d "$RUNNER_TEMP/cmdline-tools"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$RUNNER_TEMP/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-            if [ -z "$SDKMANAGER" ]; then
-              echo "Downloading Android cmdline-tools...";
-              TMP_TOOLS="$ANDROID_SDK_ROOT/cmdline-tools-tmp";
-              mkdir -p "$TMP_TOOLS";
-              curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$TMP_TOOLS/tools.zip";
-              unzip -q "$TMP_TOOLS/tools.zip" -d "$TMP_TOOLS";
-              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools";
-              mv "$TMP_TOOLS/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest";
-              rm -rf "$TMP_TOOLS";
-              SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager";
-            fi;
+      - name: Install Android SDK packages
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --licenses > /dev/null
+          yes | sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "build-tools;36.0.0" \
+            "ndk;26.2.11394342"
 
-            export PATH="$PATH:$(dirname "$SDKMANAGER")";
+      - name: Install Python build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install "cython>=0.29" buildozer
 
-            set +o pipefail;
-            yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
-              "platform-tools" "platforms;android-33" \
-              "build-tools;33.0.2" "build-tools;36.0.0";
-            SDK_EXIT=${PIPESTATUS[1]};
-            set -o pipefail;
-            if [ "$SDK_EXIT" -ne 0 ]; then
-              exit "$SDK_EXIT";
-            fi;
-
-            pip install --upgrade pip;
-            buildozer android release'
+      - name: Build release APK
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.2.11394342
+          ANDROID_NDK: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.2.11394342
+          ANDROIDAPI: 33
+          ANDROIDMINAPI: 21
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/36.0.0:$PATH"
+          buildozer android release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
