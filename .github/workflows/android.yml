@@ -51,7 +51,8 @@ jobs:
 
             set +o pipefail;
             yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
-              "platform-tools" "platforms;android-33" "build-tools;33.0.2";
+              "platform-tools" "platforms;android-33" \
+              "build-tools;33.0.2" "build-tools;36.0.0";
             SDK_EXIT=${PIPESTATUS[1]};
             set -o pipefail;
             if [ "$SDK_EXIT" -ne 0 ]; then
