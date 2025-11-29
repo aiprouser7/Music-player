@@ -49,8 +49,14 @@ jobs:
 
             export PATH="$PATH:$(dirname "$SDKMANAGER")";
 
+            set +o pipefail;
             yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
               "platform-tools" "platforms;android-33" "build-tools;33.0.2";
+            SDK_EXIT=${PIPESTATUS[1]};
+            set -o pipefail;
+            if [ "$SDK_EXIT" -ne 0 ]; then
+              exit "$SDK_EXIT";
+            fi;
 
             pip install --upgrade pip;
             buildozer android release'
