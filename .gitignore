@@ -1,0 +1,9 @@
+# Buildozer artifacts
+.buildozer/
+bin/
+# Python
+__pycache__/
+*.pyc
+# Editor
+.vscode/
+.idea/

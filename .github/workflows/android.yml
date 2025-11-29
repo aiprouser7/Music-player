@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: .buildozer
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+
+      - name: Build release APK
+        run: |
+          docker run --rm \
+            --entrypoint /bin/bash \
+            -v "${{ github.workspace }}:/home/user/app" \
+            -w /home/user/app \
+            kivy/buildozer \
+            -c 'set -e;
+            export ANDROID_SDK_ROOT=/home/user/app/.buildozer/android/platform/android-sdk;
+            export ANDROID_HOME="$ANDROID_SDK_ROOT";
+            export ANDROIDSDK="$ANDROID_SDK_ROOT";
+            mkdir -p "$ANDROID_SDK_ROOT";
+
+            apt-get update -qq;
+            apt-get install -yq wget unzip;
+
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager";
+            if [ ! -x "$SDKMANAGER" ]; then
+              TMPDIR=$(mktemp -d);
+              cd "$TMPDIR";
+              wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip;
+              unzip -q commandlinetools-linux-11076708_latest.zip;
+              mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools";
+              mv cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest";
+            fi;
+
+            export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH";
+
+            yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" \
+              "platform-tools" "platforms;android-33" "build-tools;33.0.2";
+
+            pip install --upgrade pip;
+            buildozer android release'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tubeloader-apk
+          path: bin/*.apk
