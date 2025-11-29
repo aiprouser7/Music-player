@@ -23,14 +23,23 @@ jobs:
             -v "${{ github.workspace }}:/home/user/app" \
             -w /home/user/app \
             kivy/buildozer \
-            -c 'export ANDROID_SDK_ROOT=/opt/android;
-            if [ -d "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" ]; then
-              SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager";
+            -c 'set -e;
+            export ANDROID_SDK_ROOT=/home/user/app/.buildozer/android/platform/android-sdk;
+            export ANDROID_HOME="$ANDROID_SDK_ROOT";
+            export ANDROIDSDK="$ANDROID_SDK_ROOT";
+            mkdir -p "$ANDROID_SDK_ROOT";
+
+            TOOLS_ROOT=/opt/android/cmdline-tools;
+            if [ -d "$TOOLS_ROOT/latest/bin" ]; then
+              SDKMANAGER="$TOOLS_ROOT/latest/bin/sdkmanager";
             else
-              SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/tools/bin/sdkmanager";
+              SDKMANAGER="$TOOLS_ROOT/tools/bin/sdkmanager";
             fi;
             export PATH="$PATH:$(dirname "$SDKMANAGER")";
-            yes | "$SDKMANAGER" "platforms;android-33" "build-tools;33.0.2";
+
+            yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
+              "platform-tools" "platforms;android-33" "build-tools;33.0.2";
+
             pip install --upgrade pip;
             buildozer android release'
 
